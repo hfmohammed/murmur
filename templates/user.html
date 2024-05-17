@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+    <head></head>
+    <body>
+        <a href="/login">Log Out</a>
+        {{ follow_html | safe }}
+        <p>Number of Tweets: {{ tweet_count | safe }}</p>
+        <p>Following: {{ following_count | safe }}</p>
+        <p>Followers: {{ followers_count | safe }}</p>
+
+        <div>
+            {{ html_content | safe}}
+        </div>
+    </body>
+</html>
