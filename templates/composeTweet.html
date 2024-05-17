@@ -6,6 +6,13 @@
     <title>Compose Tweet</title>
 </head>
 <body>
+    {{ homeHtml | safe }}
+    {{ listFollowers | safe }}
+    <a href="/login">Log Out</a>
+    
+    {{ searchUser | safe }}    
+    {{ searchTweet | safe }}
+    
     <h1>Compose Tweet</h1>
     {{ formElement | safe}}
     

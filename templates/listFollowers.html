@@ -1,14 +1,22 @@
 <!DOCTYPE html>
-<html>
-    <head></head>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>List Followers</title>
+    </head>
+
     <body>
-        <a href="/login">Log Out</a>
+        {{ homeHtml | safe }}
         {{ composeTweetHtml | safe }}
+        <a href="/login">Log Out</a>
 
         {{ searchUser | safe }}
-    
+        {{ searchTweet | safe }}
+
+        <h1>List Followers</h1>
         <div>
-            {{ html_content | safe}}
+            {{ html_content | safe }}
         </div>
     </body>
 </html>
