@@ -4,15 +4,19 @@ import getpass
 import re
 from datetime import datetime
 import os
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, session
 
 databaseName = "test.db"
 
-def getHomeHtml(userId):
-    html_content =  f"""
-                        <a href="/home?userId={userId}">Home</a>
+
+def getHomeHtml():
+    html_content = f"""
+                        <form action="/home" class="header-form">
+                            <button type="submit">Home</button>
+                        </form>
                     """
     return html_content
+
 
 def getDate():
     date = datetime.now().strftime('%Y-%m-%d')
@@ -21,13 +25,12 @@ def getDate():
     return date
 
 
-def getSearchUserHtml(loggedUser):
+def getSearchUserHtml():
     return f"""
-                <form action="/search_users?loggedUser={loggedUser}" method="post">
-                    <label for="keyword">Search Users</label><br>
-                    <input type="text" id="keyword" name="keyword"><br>
-
-                    <input type="submit" value="search user">
+                <form action="/search_users" method="post" class="header-form">
+                    <label for="user-search" class="visually-hidden">Search Users</label>
+                    <input type="text" id="user-search" name="keyword" placeholder="Search Users">
+                    <button type="submit">Search</button>
                 </form>
             """
 
@@ -66,20 +69,20 @@ def searchTweets(keywords):
     return matching_tweets
 
 
-def getSearchTweetHtml(loggedUser):
+def getSearchTweetHtml():
     return f"""
-                <form action="/search_tweets?loggedUser={loggedUser}" method="post">
-                    <label for="keyword">Search Tweets</label><br>
-                    <input type="text" id="keyword" name="keyword"><br>
-
-                    <input type="submit" value="search tweet">
+                <form action="/search_tweets" method="post" class="header-form">
+                    <label for="tweet-search" class="visually-hidden">Search Tweets</label>
+                    <input type="text" id="tweet-search" name="keyword" placeholder="Search Tweets">
+                    <button type="submit">Search</button>
                 </form>
             """
 
 
-def getFollowers(usr):
+def getFollowers():
     conn = sqlite3.connect(databaseName)
     cursor = conn.cursor()
+    loggedUser = session.get('loggedUser')
 
     # Select followers for the user
     cursor.execute("""
@@ -87,24 +90,28 @@ def getFollowers(usr):
                         FROM follows f, users u
                         WHERE f.flwer = u.usr AND
                         f.flwee = ?
-                    """, (usr,))
+                    """, (loggedUser,))
     followers = cursor.fetchall()
     return followers
 
 
-def htmlifyUsers(data, loggedUser):
+def htmlifyUsers(data):
     html_content = ""
 
     for i in data:
-        userId, name, city = i
+        visitingUser, visitingUserName, city = i
         html_content += f"""
-                            <a href="/user?usr={userId}&name={name}&loggedUser={loggedUser}" data-userId={userId}>{userId}: {name}</a>
+                            <a href="/user?visitingUser={visitingUser}&visitingUserName={visitingUserName}" class="tweet-link">
+                                <div data-uid="{visitingUser}">
+                                    <p>{visitingUser}: {visitingUserName}</p>
+                                </div>
+                            </a>
+                            <br>
                         """
-
     return html_content
 
 
-def getRecentTweets(usr):
+def getRecentTweets(visitingUser):
     conn = sqlite3.connect(databaseName)
     cursor = conn.cursor()
 
@@ -145,7 +152,7 @@ def getRecentTweets(usr):
         GROUP BY Combined.tid, Combined.writer, combined.retweeter
         ORDER BY dateSort DESC;
         """,
-        (usr, usr)
+        (visitingUser, visitingUser)
     )
 
     recent_tweets = cursor.fetchall()
@@ -154,21 +161,14 @@ def getRecentTweets(usr):
     return recent_tweets
 
 
-def getFollow_html(usr, loggedUser):
-    html_content = f"""
-                        <a href="/followUser?loggedUser={loggedUser}&usr={usr}">Follow</a>
-                    """
-    return html_content
-
-
-def follow(current_usr, follower_usr):
+def follow(loggedUser, visitingUser):
     conn = sqlite3.connect(databaseName)
     cursor = conn.cursor()
 
     tdate = getDate()
     try:
         cursor.execute("INSERT INTO follows VALUES (? , ?, ?)",
-                       (current_usr, follower_usr, tdate))
+                       (loggedUser, visitingUser, tdate))
         conn.commit()
         print("added")
     except sqlite3.IntegrityError:
@@ -177,7 +177,7 @@ def follow(current_usr, follower_usr):
     conn.close()
 
 
-def getUserDetails(usr):
+def getUserDetails(visitingUser):
     conn = sqlite3.connect(databaseName)
     cursor = conn.cursor()
 
@@ -186,7 +186,7 @@ def getUserDetails(usr):
         SELECT COUNT(*) 
         FROM tweets 
         WHERE writer = ?
-        """, (usr,))
+        """, (visitingUser,))
     tweet_count = cursor.fetchone()[0]
 
     cursor.execute(
@@ -194,7 +194,7 @@ def getUserDetails(usr):
         SELECT COUNT(*)
         FROM follows
         WHERE flwer = ?
-        """, (usr,))
+        """, (visitingUser,))
     following_count = cursor.fetchone()[0]
 
     cursor.execute(
@@ -202,35 +202,39 @@ def getUserDetails(usr):
         SELECT COUNT(*)
         FROM follows
         WHERE flwee = ?
-        """, (usr,))
+        """, (visitingUser,))
     followers_count = cursor.fetchone()[0]
 
     conn.close()
     return tweet_count, following_count, followers_count
 
 
-def _htmlifyTweet(usr, tid, writer, date, text, replyto, _type="", retweeter=""):
+def _htmlifyTweet(tid, writer, date, text):
     element = f"""
-                <div data-tid="{tid}" data-writer="{writer}" data-date="{date}" data-text="{text}" data-replyto="{replyto}" data-_type="{_type}" data-retweeter="{retweeter}">
-                    <p>{replyto} {_type} {retweeter}</p>
-                    <p>{date}, {writer}</p>
-                    <a href="/tweets?tid={tid}&usr={usr}">{text}</a>
-                </div>
-                <br>
+                    <a href="/tweets?tid={tid}" class="tweet-link">
+                        <div data-tid="{tid}">
+                            <p style="text-align: center; font-weight: bold;">Written by {writer} on {date}</p>
+                            <br>
+                            <p>{text}</p>
+                        </div>
+                    </a>
+                    <br>
                 """
     return element
 
 
-def _retweet(usr, tid):
+def _retweet(tid):
+    loggedUser = session.get('loggedUser')
+    tdate = getDate()
+
     conn = sqlite3.connect(databaseName)
     cursor = conn.cursor()
-    tdate = getDate()
+
     cursor.execute(
         """
         INSERT INTO retweets VALUES (?, ?, ?);
-        """, (usr, tid, tdate))
+        """, (loggedUser, tid, tdate))
     conn.commit()
-
     conn.close()
 
 
@@ -282,57 +286,78 @@ def getRetweetsCount(tid):
     return data
 
 
-def _htmlifyTweetDetails(usr, tid, replyCount, retweetCount, tweetDetails):
+def getRetweetHtml(tid):
+    loggedUser = session.get('loggedUser')
+    html_content = f"""
+                        <form action="/retweet?tid={tid}" method="post" class="header-form">
+                            <input type="hidden" name="usr" value="{ loggedUser }">
+                            <button type="submit">Retweet</button>
+                        </form>
+                    """
+    return html_content
+
+
+def _htmlifyTweetDetails(tid, replyCount, retweetCount, tweetDetails):
     writer = tweetDetails[0][1]
     date = tweetDetails[0][2]
     text = tweetDetails[0][3]
     replyto = tweetDetails[0][4]
 
+    replyHtml = getComposeTweetHtml(replyto=tid)
+    retweetHtml = getRetweetHtml(tid)
+
     element = f"""
                 <div data-tid="{tid}">
                     <p>Author: {writer} date: {date}, reply to: {replyto}</p>
-                    <p>{text}<p>
-                    <p>replies: {replyCount}  ||  retweets: {retweetCount}<p>
-                    <a href="/composeTweet?usr={usr}&replyto={tid}">reply</a>
-                    <a href="/retweet?usr={usr}&tid={tid}">retweet</a>
+                    <p>{text}</p>
+                    <p>replies: {replyCount}  ||  retweets: {retweetCount}</p>
+
+                    <br>
+
+                    <div style="display: flex; justify-content: center;">
+                        <div style="flex: 1; display: flex; justify-content: center; margin: 0 10px;">
+                            {replyHtml}
+                        </div>
+                        <div style="flex: 1; display: flex; justify-content: center; margin: 0 10px;">
+                            {retweetHtml}
+                        </div>
+                    </div>
                 </div>\n
                 """
     return element
 
 
-def getTweetStats(userId, tid):
+def getTweetStats(tid):
     replyCount = getRepliesCount(tid)
     retweetCount = getRetweetsCount(tid)
     tweetDetails = getTweetDetails(tid)
 
     html_content = _htmlifyTweetDetails(
-        userId, tid, replyCount, retweetCount, tweetDetails)
+        tid, replyCount, retweetCount, tweetDetails)
 
     return html_content
 
 
-def htmlifyTweets(usr, data):
-    htmlContent = ""
+def htmlifyTweets(data):
+    html_content = ""
 
     for i in data:
         try:
             tid, writer, date, text, replyto, _type, retweeter = i
-            htmlContent += _htmlifyTweet(usr, tid, writer,
-                                         date, text, replyto, _type, retweeter)
+
         except:
             try:
                 tid, writer, date, text, replyto, _type = i
-                htmlContent += _htmlifyTweet(usr, tid, writer,
-                                             date, text, replyto, _type)
+
             except:
                 tid, writer, date, text, replyto = i
-                htmlContent += _htmlifyTweet(usr, tid, writer,
-                                             date, text, replyto)
+        html_content += _htmlifyTweet(tid, writer, date, text)
 
-    return htmlContent
+    return html_content
 
 
-def retrieve_flwee_tweets(usr):
+def retrieve_flwee_tweets():
+    loggedUser = session.get('loggedUser')
     conn = sqlite3.connect(databaseName)
     cursor = conn.cursor()
 
@@ -376,38 +401,38 @@ def retrieve_flwee_tweets(usr):
             ) AS Combined
         GROUP BY Combined.tid, Combined.writer, combined.retweeter
         ORDER BY dateSort DESC;
-        """, (usr, usr))
+        """, (loggedUser, loggedUser))
     data = cursor.fetchall()
 
     conn.close()
     return data
 
 
-def createUser(userId, password, name, email, city, timezone):
+def createUser(loggedUser, password, name, email, city, timezone):
     conn = sqlite3.connect(databaseName)
     cursor = conn.cursor()
     cursor.execute("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?)",
-                   (userId, password, name, email, city, timezone))
+                   (loggedUser, password, name, email, city, timezone))
     conn.commit()
     conn.close()
     return "Success"
 
 
-def usernameExists(usr):
+def usernameExists(loggedUser):
     conn = sqlite3.connect(databaseName)
     cursor = conn.cursor()
 
-    cursor.execute("SELECT * FROM users WHERE usr = ?", (usr,))
+    cursor.execute("SELECT * FROM users WHERE usr = ?", (loggedUser,))
     row = cursor.fetchone()
     conn.close()
     return row is not None
 
 
-def pullUserData(usr):
+def pullUserData(loggedUser):
     conn = sqlite3.connect(databaseName)
     cursor = conn.cursor()
 
-    cursor.execute("SELECT * FROM users WHERE usr = ?", (usr,))
+    cursor.execute("SELECT * FROM users WHERE usr = ?", (loggedUser,))
     row = cursor.fetchone()
 
     conn.close()
@@ -441,21 +466,32 @@ def searchUsers(keyword):
     return data
 
 
-def getComposeTweetHtml(usr):
+def getComposeTweetHtml(replyto="None"):
+    loggedUser = session.get('loggedUser')
+    buttonText = "Write a Tweet"
+
+    if replyto != "None":
+        buttonText = "Reply"
+
     html_content = f"""
-                        <a href="/composeTweet?usr={usr}&replyto=NULL">Compose Tweet</a>
+                        <form action="/composeTweet" method="post" class="header-form">
+                            <input type="hidden" name="replyto" value="{ replyto }">
+                            <button type="submit">{buttonText}</button>
+                        </form>
                     """
     return html_content
 
 
-def getListFollowersHtml(usr):
+def getListFollowersHtml():
     html_content = f"""
-                        <a href="/listFollowers?usr={usr}">List Followers</a>
+                        <form action="/followers" class="header-form">
+                            <button type="submit">My Followers</button>
+                        </form>
                     """
     return html_content
 
 
-def pushTweet(writer_id, tweetText, replyTo):
+def pushTweet(writer_id, tweetText, replyto):
     tdate = getDate()
     hashtags = re.findall(r"#(\w+)", tweetText)
 
@@ -473,7 +509,7 @@ def pushTweet(writer_id, tweetText, replyTo):
 
         # Insert the tweet with the calculated tweet ID
         cursor.execute("INSERT INTO tweets (tid, writer, tdate, text, replyto) VALUES (?, ?, ?, ?, ?)",
-                       (tweet_id, writer_id, tdate, tweetText, replyTo))
+                       (tweet_id, writer_id, tdate, tweetText, replyto))
 
         # Insert hashtags and their associations with the tweet
         for i in range(len(hashtags)):

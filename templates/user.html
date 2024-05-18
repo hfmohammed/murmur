@@ -1,23 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>User</title>
-    </head>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>User</title>
+    <link rel="stylesheet" href="/static/css/home.css" />
+  </head>
 
-    <body>
+  <body>
+    <header>
+      <div class="header-left">
         {{ homeHtml | safe }}
-        {{ composeTweetHtml | safe }}
-        {{ listFollowers | safe }}
-        <a href="/login">Log Out</a>
-
-        {{ searchUser | safe }}
-        {{ searchTweet | safe }}
-
         <h1>User</h1>
-        <main>
-            {{ htmlContent | safe }}
-        </main>
-    </body>
+      </div>
+      <div class="header-right">
+        {{ composeTweetHtml | safe }} {{ listFollowers | safe }} {{ searchUser |
+        safe }} {{ searchTweet | safe }}
+
+        <form action="/login" class="header-form">
+          <button type="submit">Log Out</button>
+        </form>
+      </div>
+    </header>
+
+    {{ html_content | safe }}
+
+  </body>
 </html>

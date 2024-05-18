@@ -1,0 +1,183 @@
+/* main.css */
+
+/* Basic reset for consistency */
+body,
+h1,
+form,
+input,
+label,
+a,
+p,
+div {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 100%;
+  vertical-align: baseline;
+}
+
+/* Body styling */
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f2f2f2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 120px;
+  margin: 0;
+}
+
+/* Header styling */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  background: #fff;
+  padding: 20px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+}
+
+.header-left {
+  display: flex;
+  gap: 20px;
+}
+
+.header-left h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.header-right {
+  margin-right: 30px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.header-form {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.header-form button {
+  background-color: #4caf50;
+  color: white;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.header-form button:hover {
+  background-color: #45a049;
+}
+
+.header-form input[type="text"] {
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+main {
+  margin-top: 100px; /* Adjust to account for fixed header */
+  width: 100%;
+  max-width: 600px;
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Tweet container and individual tweets */
+.tweets-container,
+.users-container {
+  width: 100%;
+  max-width: 600px;
+  margin-top: 20px; /* Adjust to account for fixed header */
+}
+
+/* Individual tweet styling */
+div[data-tid] {
+  background: #fff;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  margin-bottom: 15px;
+  transition: background-color 0.3s;
+}
+
+.tweet-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.tweet-link:hover div[data-tid] {
+  background-color: #f0f0f0;
+}
+
+div[data-tid] p {
+  margin: 5px 0;
+}
+
+div[data-uid] {
+  background: #fff;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  margin-bottom: 15px;
+  transition: background-color 0.3s;
+}
+
+.tweet-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.tweet-link:hover div[data-uid] {
+  background-color: #f0f0f0;
+}
+
+div[data-uid] p {
+  margin: 5px 0;
+}
+
+form input[type="text"] {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.user-info-div {
+  display: flex;
+  gap: 20px;
+}
+
+.user-info {
+  flex: 80%;
+}
+
+.follow-button {
+  flex: 20%;
+}

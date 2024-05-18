@@ -4,20 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Compose Tweet</title>
+    <link rel="stylesheet" href="/static/css/home.css">
+    <link rel="stylesheet" href="/static/css/composeTweet.css">
 </head>
 <body>
-    {{ homeHtml | safe }}
-    {{ listFollowers | safe }}
-    <a href="/login">Log Out</a>
-    
-    {{ searchUser | safe }}    
-    {{ searchTweet | safe }}
-    
-    <h1>Compose Tweet</h1>
-    {{ formElement | safe}}
-    
-    {% if message %}
-    <p>{{ message }}</p>
-    {% endif %}
+    <header>
+        <div class="header-left">
+            {{ homeHtml | safe }}
+            <h1>Compose Tweet</h1>
+        </div>
+        <div class="header-right">            
+            {{ listFollowers | safe }}
+            
+            {{ searchUser | safe }}
+            
+            {{ searchTweet | safe }}
+
+            <form action="/logout" method="post" class="header-form">
+                <button type="submit">Log Out</button>
+            </form>
+        </div>
+    </header>
+    <main>
+        {{ formElement | safe }}
+    </main>
 </body>
 </html>

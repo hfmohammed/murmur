@@ -4,12 +4,13 @@ import getpass
 import re
 from datetime import datetime
 import os
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, session
 import functions
+
 app = Flask(__name__)
+app.secret_key = "test"
 
 databaseName = "test.db"
-
 
 @app.route('/')
 def index():
@@ -23,86 +24,100 @@ def signup():
 
 @app.route('/approve_signup', methods=["POST"])
 def approve_signup():
-    userId = request.form['username']
+    loggedUser = request.form['username']
     password = request.form['password']
-    name = request.form['name']
+    loggedUserName = request.form['loggedUserName']
     email = request.form['email']
     city = request.form['city']
     timezone = 1
 
-    if not functions.usernameExists(userId):
-        if functions.createUser(userId, password, name, email, city, timezone):
-            return redirect(url_for('home', userId=userId))
+    if not functions.usernameExists(loggedUser):
+        if functions.createUser(loggedUser, password, loggedUserName, email, city, timezone):
+            session['loggedUser'] = loggedUser
+            return redirect(url_for('home'))
     return redirect(url_for('signup'))
-
 
 @app.route('/login')
 def login():
-    cacheData = True
-    if cacheData:
-        return render_template('login.html')
+    session.clear()
+    return render_template('login.html')
+
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return render_template('login.html')
 
 
 @app.route('/approve_login', methods=["POST"])
 def approve_login():
-    userId = request.form['username']
+    loggedUser = request.form['username']
     password = request.form['password']
 
-    if not functions.usernameExists(userId):
+    if not functions.usernameExists(loggedUser):
         return redirect(url_for('login'))
     else:
-        userData = functions.pullUserData(userId)
+        print("_________Approving__________")
+        userData = functions.pullUserData(loggedUser)
         expectedPassword = userData[1]
         if expectedPassword != password:
             return redirect(url_for('login'))
-        return redirect(url_for('home', userId=userId))
+        
+        # Store loggedUser in session
+        print("_____Logging in_____")
+        session['loggedUser'] = loggedUser
+        return redirect(url_for('home'))
 
 
 @app.route('/tweets')
 def tweets():
     tid = request.args.get('tid')
-    userId = request.args.get('usr')
 
-    html_content = functions.getTweetStats(userId, tid)
-    composeTweetHtml = functions.getComposeTweetHtml(userId)
-    _getSearchUserHtml = functions.getSearchUserHtml(userId)
-    _getHomeHtml = functions.getHomeHtml(userId)
-    _getSearchTweetHtml = functions.getSearchTweetHtml(userId)
-    _getListFollowersHtml = functions.getListFollowersHtml(userId)
+    html_content = functions.getTweetStats(tid)
 
-    return render_template('searchTweets.html', html_content=html_content, composeTweetHtml=composeTweetHtml, searchUser=_getSearchUserHtml, listFollowers=_getListFollowersHtml, searchTweet=_getSearchTweetHtml, homeHtml=_getHomeHtml)
+    _getSearchUserHtml = functions.getSearchUserHtml()
+    _getHomeHtml = functions.getHomeHtml()
+    _getSearchTweetHtml = functions.getSearchTweetHtml()
+    _getListFollowersHtml = functions.getListFollowersHtml()
+
+    composeTweetHtml = functions.getComposeTweetHtml(tid)
+
+    return render_template('tweets.html', html_content=html_content, composeTweetHtml=composeTweetHtml, searchUser=_getSearchUserHtml, listFollowers=_getListFollowersHtml, searchTweet=_getSearchTweetHtml, homeHtml=_getHomeHtml)
 
 
-@app.route('/retweet')
+@app.route('/retweet', methods=["POST"])
 def retweet():
     tid = request.args.get('tid')
-    userId = request.args.get('usr')
-    print(userId)
+
     try:
-        functions._retweet(userId, tid)
+        functions._retweet(tid)
     except:
         pass
-    return redirect(url_for('tweets', usr=userId, tid=tid))
+
+    print("_____Retweeted_____")
+    return redirect(url_for('tweets', tid=tid))
 
 
-@app.route('/composeTweet')
+@app.route('/composeTweet', methods=["POST"])
 def composeTweet():
+    loggedUser = session["loggedUser"]
+    replyto = request.form["replyto"]
+    print(loggedUser)
 
-    usr = request.args.get('usr')
-    replyto = request.args.get('replyto')
-
-    _getSearchUserHtml = functions.getSearchUserHtml(usr)
-    _getSearchTweetHtml = functions.getSearchTweetHtml(usr)
-    _getListFollowersHtml = functions.getListFollowersHtml(usr)
-    _getHomeHtml = functions.getHomeHtml(usr)
+    _getSearchUserHtml = functions.getSearchUserHtml()
+    _getSearchTweetHtml = functions.getSearchTweetHtml()
+    _getListFollowersHtml = functions.getListFollowersHtml()
+    _getHomeHtml = functions.getHomeHtml()
 
     formElement = f"""
-                        <form action="/_composeTweet?usr={usr}&replyto={replyto}" method="post">
-                            <label for="tweet">Text</label><br>
-                            <input type="text" id="tweet" name="tweet"><br>
-
-                            <input type="submit" value="Tweet">
-                        </form>
+                    <form action="/_composeTweet" method="post" class="tweet-form">
+                        <input type="hidden" name="replyto" value="{ replyto }">
+    
+                        <label for="tweet"></label><br>
+                        <textarea type="text" class="large-input" placeholder="Share your thoughts with the world..." id="tweet" name="tweet"></textarea>
+                        <br>
+                        <input type="submit" value="Tweet">
+                    </form>
                     """
 
     return render_template('composeTweet.html', formElement=formElement, searchUser=_getSearchUserHtml, listFollowers=_getListFollowersHtml, searchTweet=_getSearchTweetHtml, homeHtml=_getHomeHtml)
@@ -110,38 +125,49 @@ def composeTweet():
 
 @app.route('/_composeTweet', methods=["POST"])
 def _composeTweet():
-    usr = request.args.get('usr')
-    replyTo = request.args.get('replyto')
+    loggedUser = session["loggedUser"]
+    replyto = request.form['replyto']
     tweetText = request.form['tweet']
-    functions.pushTweet(usr, tweetText, replyTo)
 
-    if replyTo != "NULL":
-        return redirect(url_for('tweets', usr=usr, tid=replyTo))
+    print("_____Pushing the Tweet_____")
+    functions.pushTweet(loggedUser, tweetText, replyto)
+    print("_____Tweet Pushed_____")
+
+    print("replyto", replyto)
+    if replyto != "None":
+        return redirect(url_for('tweets', tid=replyto))
     else:
-        return redirect(url_for('home', userId=usr))
+        return redirect(url_for('home'))
 
 
-@app.route('/followUser')
+@app.route('/followUser', methods=["GET", "POST"])
 def followUser():
-    usr = request.args.get('usr')
-    loggedUser = request.args.get('loggedUser')
-    functions.follow(loggedUser, usr)
+    visitingUser = request.args.get('visitingUser')
+    visitingUserName = request.args.get('visitingUserName')
+    print("Attempting to follow:", visitingUser, visitingUserName)
+    
+    loggedUser = session.get('loggedUser')
+    
+    functions.follow(loggedUser, visitingUser)
 
-    return redirect(url_for('home', userId=loggedUser))
+    return redirect(url_for('user', visitingUser=visitingUser, visitingUserName=visitingUserName ))
 
 
-def htmlUser(username, name, follow_html, tweet_count, following_count, followers_count, tweetsHtml):
-    html_content =  f"""
-                        <div>
-                            <p>Username: { username } || Name: { name }</p>
-                            { follow_html }
-                            <p>Number of Tweets: { tweet_count }</p>
-                            <p>Following: { following_count }</p>
-                            <p>Followers: { followers_count }</p>
+def htmlUser(visitingUser, visitingUserName, tweet_count, following_count, followers_count, usersHtml):
+    print("check:", visitingUser, visitingUserName)
+    html_content = f"""
+                        <div class="user-info-div">
+                            <div class="user-info">
+                                <p>Username: { visitingUser } || Name: { visitingUserName }</p>
+                                <Following:>Number of Tweets: { tweet_count } || Following: { following_count } || Followers: { followers_count }</p>
+                            </div>
+                            <form action="/followUser?visitingUser={visitingUser}&visitingUserName={visitingUserName}" method="post" class="header-form">
+                                <button>Follow</button>
+                            </form>
                         </div>
                     
-                        <div>
-                            { tweetsHtml }
+                        <div class="users-container">
+                            { usersHtml }
                         </div>
                     """
     return html_content
@@ -149,27 +175,27 @@ def htmlUser(username, name, follow_html, tweet_count, following_count, follower
 
 @app.route('/user')
 def user():
-    usr = request.args.get('usr')
-    loggedUser = request.args.get('loggedUser')
-    name = request.args.get('name')
+    print("_____Opening User_____")
+    
+    visitingUser = request.args.get('visitingUser')
+    visitingUserName = request.args.get('visitingUserName')
 
-    tweet_count, following_count, followers_count = functions.getUserDetails(
-        usr)
+    tweet_count, following_count, followers_count = functions.getUserDetails(visitingUser)
 
-    recentTweets = functions.getRecentTweets(usr)
+    recentTweets = functions.getRecentTweets(visitingUser)
 
-    _tweetsHtml = functions.htmlifyTweets(loggedUser, recentTweets)
-    follow_html = functions.getFollow_html(usr, loggedUser)
+    _tweetsHtml = functions.htmlifyTweets(recentTweets)
 
-    composeTweetHtml = functions.getComposeTweetHtml(loggedUser)
-    _getSearchUserHtml = functions.getSearchUserHtml(loggedUser)
-    _getHomeHtml = functions.getHomeHtml(loggedUser)
-    _getSearchTweetHtml = functions.getSearchTweetHtml(loggedUser)
-    _getListFollowersHtml = functions.getListFollowersHtml(loggedUser)
+    composeTweetHtml = functions.getComposeTweetHtml()
+    _getSearchUserHtml = functions.getSearchUserHtml()
+    _getHomeHtml = functions.getHomeHtml()
+    _getSearchTweetHtml = functions.getSearchTweetHtml()
+    _getListFollowersHtml = functions.getListFollowersHtml()
 
-    html_content = htmlUser(usr, name, follow_html, tweet_count, following_count, followers_count, _tweetsHtml)
+    html_content = htmlUser(visitingUser, visitingUserName, tweet_count,
+                            following_count, followers_count, _tweetsHtml)
 
-    return render_template('user.html', homeHtml=_getHomeHtml, composeTweetHtml=composeTweetHtml, searchUser=_getSearchUserHtml, listFollowers=_getListFollowersHtml, searchTweet=_getSearchTweetHtml, htmlContent=html_content)
+    return render_template('user.html', homeHtml=_getHomeHtml, composeTweetHtml=composeTweetHtml, searchUser=_getSearchUserHtml, listFollowers=_getListFollowersHtml, searchTweet=_getSearchTweetHtml, html_content=html_content)
 
 
 @app.route('/search_users', methods=["POST"])
@@ -178,13 +204,13 @@ def search_users():
     keyword = request.form['keyword']
     data = functions.searchUsers(keyword)
 
-    html_content = functions.htmlifyUsers(data, loggedUser)
+    html_content = functions.htmlifyUsers(data)
 
-    composeTweetHtml = functions.getComposeTweetHtml(loggedUser)
-    _getSearchUserHtml = functions.getSearchUserHtml(loggedUser)
-    _getHomeHtml = functions.getHomeHtml(loggedUser)
-    _getSearchTweetHtml = functions.getSearchTweetHtml(loggedUser)
-    _getListFollowersHtml = functions.getListFollowersHtml(loggedUser)
+    composeTweetHtml = functions.getComposeTweetHtml()
+    _getSearchUserHtml = functions.getSearchUserHtml()
+    _getHomeHtml = functions.getHomeHtml()
+    _getSearchTweetHtml = functions.getSearchTweetHtml()
+    _getListFollowersHtml = functions.getListFollowersHtml()
 
     return render_template('searchUsers.html', html_content=html_content, composeTweetHtml=composeTweetHtml, searchUser=_getSearchUserHtml, listFollowers=_getListFollowersHtml, searchTweet=_getSearchTweetHtml, homeHtml=_getHomeHtml)
 
@@ -196,44 +222,49 @@ def search_tweets():
 
     data = functions.searchTweets(keyword)
 
-    html_content = functions.htmlifyTweets(loggedUser, data)
-    composeTweetHtml = functions.getComposeTweetHtml(loggedUser)
-    _getSearchUserHtml = functions.getSearchUserHtml(loggedUser)
-    _getHomeHtml = functions.getHomeHtml(loggedUser)
-    _getSearchTweetHtml = functions.getSearchTweetHtml(loggedUser)
-    _getListFollowersHtml = functions.getListFollowersHtml(loggedUser)
+    html_content = functions.htmlifyTweets(data)
+    composeTweetHtml = functions.getComposeTweetHtml()
+    _getSearchUserHtml = functions.getSearchUserHtml()
+    _getHomeHtml = functions.getHomeHtml()
+    _getSearchTweetHtml = functions.getSearchTweetHtml()
+    _getListFollowersHtml = functions.getListFollowersHtml()
 
     return render_template('searchTweets.html', html_content=html_content, composeTweetHtml=composeTweetHtml, searchUser=_getSearchUserHtml, listFollowers=_getListFollowersHtml, searchTweet=_getSearchTweetHtml, homeHtml=_getHomeHtml)
 
 
-@app.route('/listFollowers')
+@app.route('/followers')
 def listFollowers():
-    userId = request.args.get('usr')
+    loggedUser = session.get('loggedUser')
 
-    data = functions.getFollowers(userId)
+    data = functions.getFollowers()
+    html_content = functions.htmlifyUsers(data)
 
-    html_content = functions.htmlifyUsers(data, userId)
+    composeTweetHtml = functions.getComposeTweetHtml()
+    _getSearchUserHtml = functions.getSearchUserHtml()
+    _getHomeHtml = functions.getHomeHtml()
+    _getSearchTweetHtml = functions.getSearchTweetHtml()
 
-    composeTweetHtml = functions.getComposeTweetHtml(userId)
-    _getSearchUserHtml = functions.getSearchUserHtml(userId)
-    _getHomeHtml = functions.getHomeHtml(userId)
-    _getSearchTweetHtml = functions.getSearchTweetHtml(userId)
-
-    return render_template('listFollowers.html', html_content=html_content, composeTweetHtml=composeTweetHtml, searchUser=_getSearchUserHtml, homeHtml=_getHomeHtml, searchTweet=_getSearchTweetHtml)
+    return render_template('followers.html', html_content=html_content, composeTweetHtml=composeTweetHtml, searchUser=_getSearchUserHtml, homeHtml=_getHomeHtml, searchTweet=_getSearchTweetHtml)
 
 
 @app.route('/home')
 def home():
-    userId = request.args.get('userId')
-    data = functions.retrieve_flwee_tweets(userId)
+    loggedUser = session.get('loggedUser')
 
-    html_content = functions.htmlifyTweets(userId, data)
-    composeTweetHtml = functions.getComposeTweetHtml(userId)
-    _getSearchUserHtml = functions.getSearchUserHtml(userId)
-    _getSearchTweetHtml = functions.getSearchTweetHtml(userId)
-    _getListFollowersHtml = functions.getListFollowersHtml(userId)
+    if loggedUser is None:
+        return redirect(url_for('login'))
+    else:
+        print("Logged In")
+        data = functions.retrieve_flwee_tweets()
 
-    return render_template('home.html', html_content=html_content, composeTweetHtml=composeTweetHtml, searchUser=_getSearchUserHtml, listFollowers=_getListFollowersHtml, searchTweet=_getSearchTweetHtml)
+        html_content = functions.htmlifyTweets(data)
+
+        composeTweetHtml = functions.getComposeTweetHtml()
+        _getSearchUserHtml = functions.getSearchUserHtml()
+        _getSearchTweetHtml = functions.getSearchTweetHtml()
+        _getListFollowersHtml = functions.getListFollowersHtml()
+
+        return render_template('home.html', html_content=html_content, composeTweetHtml=composeTweetHtml, searchUser=_getSearchUserHtml, listFollowers=_getListFollowersHtml, searchTweet=_getSearchTweetHtml)
 
 
 if __name__ == '__main__':

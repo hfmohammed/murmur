@@ -1,17 +1,28 @@
 <!DOCTYPE html>
-<html>
-    <head></head>
-    <body>
-        <a href="/login">Log Out</a>
-        {{ composeTweetHtml | safe }}
-        {{ listFollowers | safe }}
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Home</title>
+    <link rel="stylesheet" href="/static/css/home.css" />
+  </head>
 
-        {{ searchUser | safe }}
+  <body>
+    <header>
+      <div class="header-left">
+        <h1>Home</h1>
+      </div>
+      <div class="header-right">
+        {{ composeTweetHtml | safe }} {{ listFollowers | safe }} {{ searchUser |
+        safe }} {{ searchTweet | safe }}
 
-        {{ searchTweet | safe }}
-    
-        <div>
-            {{ html_content | safe}}
-        </div>
-    </body>
+        <form action="/login" class="header-form">
+          <button type="submit">Log Out</button>
+        </form>
+      </div>
+    </header>
+      <div class="users-container">
+        {{ html_content | safe}}
+    </div>
+  </body>
 </html>

@@ -1,37 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sign Up</title>
-</head>
-<body>
-    <h1>Sign Up</h1>
-    <a href="/login">Log in</a>
+    <link rel="stylesheet" href="/static/css/index.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Sign Up</h1>
+      <a href="/login">Log In</a>
+    </header>
+
     <form action="/approve_signup" method="post">
-        <label for="username">Username:</label><br>
-        <input type="text" id="username" name="username"><br>
+      <label for="username">Username:</label><br />
+      <input type="text" id="username" name="username" /><br />
 
-        <label for="password">Password:</label><br>
-        <input type="password" id="password" name="password"><br>
-        
-        <br>
+      <label for="password">Password:</label><br />
+      <input type="password" id="password" name="password" /><br />
 
-        <label for="name">Full Name:</label><br>
-        <input type="text" id="name" name="name"><br>
+      <br />
 
-        <label for="email">Email Address:</label><br>
-        <input type="text" id="email" name="email"><br>
+      <label for="name">Full Name:</label><br />
+      <input type="text" id="name" name="name" /><br />
 
-        <label for="city">City:</label><br>
-        <input type="text" id="city" name="city"><br>
+      <label for="email">Email Address:</label><br />
+      <input type="text" id="email" name="email" /><br />
 
-        <br>
-        
-        <input type="submit" value="Sign Up">
+      <label for="city">City:</label><br />
+      <input type="text" id="city" name="city" /><br />
+
+      <br />
+
+      <input type="submit" value="Sign Up" />
     </form>
-    {% if message %}
-    <p>{{ message }}</p>
-    {% endif %}
-</body>
+  </body>
 </html>
