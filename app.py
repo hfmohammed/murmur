@@ -4,13 +4,42 @@ import getpass
 import re
 from datetime import datetime
 import os
-from flask import Flask, render_template, request, redirect, url_for, session
-import functions
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+import helperFunctions as hf
+import hashlib
 
 app = Flask(__name__)
 app.secret_key = "test"
-
 databaseName = "test.db"
+
+
+@app.route('/approve_login', methods=["POST"])
+def approve_login():
+    loggedUser = request.form['username']
+    password = request.form['password']
+    password = hashlib.sha256(password.encode()).hexdigest()
+    
+    error_message = "Username or password does not match our records"
+
+    if not hf.usernameExists(loggedUser):
+        flash(error_message)
+        # print("Flashed error: username does not exist")
+        return redirect(url_for('login'))
+    else:
+        # print("_________Approving__________")
+        userData = hf.pullUserData(loggedUser)
+        expectedPassword = userData[1]
+
+        if expectedPassword != password:
+            flash(error_message)
+            # print("Flashed error: username does not exist")
+            return redirect(url_for('login'))
+
+        # Store loggedUser in session
+        # print("_____Logging in_____")
+        session['loggedUser'] = loggedUser
+        return redirect(url_for('home'))
+
 
 @app.route('/')
 def index():
@@ -22,65 +51,57 @@ def signup():
     return render_template('signup.html')
 
 
+@app.route('/check_username', methods=["GET"])
+def check_username():
+    username = request.args.get('username')
+    if hf.usernameExists(username):
+        return jsonify(available=False)
+    else:
+        return jsonify(available=True)
+
+
 @app.route('/approve_signup', methods=["POST"])
 def approve_signup():
     loggedUser = request.form['username']
     password = request.form['password']
-    loggedUserName = request.form['loggedUserName']
+    password = hashlib.sha256(password.encode()).hexdigest()
+
+    loggedUserName = request.form['name']
     email = request.form['email']
     city = request.form['city']
     timezone = 1
 
-    if not functions.usernameExists(loggedUser):
-        if functions.createUser(loggedUser, password, loggedUserName, email, city, timezone):
+    if not hf.usernameExists(loggedUser):
+        if hf.createUser(loggedUser, password, loggedUserName, email, city, timezone):
             session['loggedUser'] = loggedUser
+            flash("Welcome, your account has been successfully created!")
             return redirect(url_for('home'))
     return redirect(url_for('signup'))
 
+
 @app.route('/login')
 def login():
-    session.clear()
     return render_template('login.html')
 
 
 @app.route('/logout')
 def logout():
     session.clear()
-    return render_template('login.html')
-
-
-@app.route('/approve_login', methods=["POST"])
-def approve_login():
-    loggedUser = request.form['username']
-    password = request.form['password']
-
-    if not functions.usernameExists(loggedUser):
-        return redirect(url_for('login'))
-    else:
-        print("_________Approving__________")
-        userData = functions.pullUserData(loggedUser)
-        expectedPassword = userData[1]
-        if expectedPassword != password:
-            return redirect(url_for('login'))
-        
-        # Store loggedUser in session
-        print("_____Logging in_____")
-        session['loggedUser'] = loggedUser
-        return redirect(url_for('home'))
+    return redirect(url_for('login'))
 
 
 @app.route('/tweets')
 def tweets():
     tid = request.args.get('tid')
 
-    html_content = functions.getTweetStats(tid)
+    html_content = hf.getTweetStats(tid)
 
-    _getSearchUserHtml = functions.getSearchUserHtml()
-    _getHomeHtml = functions.getHomeHtml()
-    _getSearchTweetHtml = functions.getSearchTweetHtml()
-    _getListFollowersHtml = functions.getListFollowersHtml()
+    _getSearchUserHtml = hf.getSearchUserHtml()
+    _getHomeHtml = hf.getHomeHtml()
+    _getSearchTweetHtml = hf.getSearchTweetHtml()
+    _getListFollowersHtml = hf.getListFollowersHtml()
 
-    composeTweetHtml = functions.getComposeTweetHtml(tid)
+    composeTweetHtml = hf.getComposeTweetHtml(tid)
 
     return render_template('tweets.html', html_content=html_content, composeTweetHtml=composeTweetHtml, searchUser=_getSearchUserHtml, listFollowers=_getListFollowersHtml, searchTweet=_getSearchTweetHtml, homeHtml=_getHomeHtml)
 
@@ -90,11 +111,12 @@ def retweet():
     tid = request.args.get('tid')
 
     try:
-        functions._retweet(tid)
+        hf._retweet(tid)
+        flash("Retweeted successfully!")
     except:
-        pass
+        flash("You have already retweeted this tweet!")
 
-    print("_____Retweeted_____")
+    # print("_____Retweeted_____")
     return redirect(url_for('tweets', tid=tid))
 
 
@@ -102,12 +124,12 @@ def retweet():
 def composeTweet():
     loggedUser = session["loggedUser"]
     replyto = request.form["replyto"]
-    print(loggedUser)
+    # print(loggedUser)
 
-    _getSearchUserHtml = functions.getSearchUserHtml()
-    _getSearchTweetHtml = functions.getSearchTweetHtml()
-    _getListFollowersHtml = functions.getListFollowersHtml()
-    _getHomeHtml = functions.getHomeHtml()
+    _getSearchUserHtml = hf.getSearchUserHtml()
+    _getSearchTweetHtml = hf.getSearchTweetHtml()
+    _getListFollowersHtml = hf.getListFollowersHtml()
+    _getHomeHtml = hf.getHomeHtml()
 
     formElement = f"""
                     <form action="/_composeTweet" method="post" class="tweet-form">
@@ -129,14 +151,16 @@ def _composeTweet():
     replyto = request.form['replyto']
     tweetText = request.form['tweet']
 
-    print("_____Pushing the Tweet_____")
-    functions.pushTweet(loggedUser, tweetText, replyto)
-    print("_____Tweet Pushed_____")
+    # print("_____Pushing the Tweet_____")
+    hf.pushTweet(loggedUser, tweetText, replyto)
+    # print("_____Tweet Pushed_____")
 
-    print("replyto", replyto)
+    # print("replyto", replyto)
     if replyto != "None":
+        flash("Your reply has been posted.")
         return redirect(url_for('tweets', tid=replyto))
     else:
+        flash("Your tweet has been posted successfully.")
         return redirect(url_for('home'))
 
 
@@ -144,17 +168,20 @@ def _composeTweet():
 def followUser():
     visitingUser = request.args.get('visitingUser')
     visitingUserName = request.args.get('visitingUserName')
-    print("Attempting to follow:", visitingUser, visitingUserName)
-    
-    loggedUser = session.get('loggedUser')
-    
-    functions.follow(loggedUser, visitingUser)
+    # print("Attempting to follow:", visitingUser, visitingUserName)
 
-    return redirect(url_for('user', visitingUser=visitingUser, visitingUserName=visitingUserName ))
+    loggedUser = session.get('loggedUser')
+
+    if hf.follow(loggedUser, visitingUser):
+        flash(f"You are now following {visitingUserName}")
+    else:
+        flash(f"You are already following {visitingUserName}")
+
+    return redirect(url_for('user', visitingUser=visitingUser, visitingUserName=visitingUserName))
 
 
 def htmlUser(visitingUser, visitingUserName, tweet_count, following_count, followers_count, usersHtml):
-    print("check:", visitingUser, visitingUserName)
+    # print("check:", visitingUser, visitingUserName)
     html_content = f"""
                         <div class="user-info-div">
                             <div class="user-info">
@@ -175,22 +202,23 @@ def htmlUser(visitingUser, visitingUserName, tweet_count, following_count, follo
 
 @app.route('/user')
 def user():
-    print("_____Opening User_____")
-    
+    # print("_____Opening User_____")
+
     visitingUser = request.args.get('visitingUser')
     visitingUserName = request.args.get('visitingUserName')
 
-    tweet_count, following_count, followers_count = functions.getUserDetails(visitingUser)
+    tweet_count, following_count, followers_count = hf.getUserDetails(
+        visitingUser)
 
-    recentTweets = functions.getRecentTweets(visitingUser)
+    recentTweets = hf.getRecentTweets(visitingUser)
 
-    _tweetsHtml = functions.htmlifyTweets(recentTweets)
+    _tweetsHtml = hf.htmlifyTweets(recentTweets)
 
-    composeTweetHtml = functions.getComposeTweetHtml()
-    _getSearchUserHtml = functions.getSearchUserHtml()
-    _getHomeHtml = functions.getHomeHtml()
-    _getSearchTweetHtml = functions.getSearchTweetHtml()
-    _getListFollowersHtml = functions.getListFollowersHtml()
+    composeTweetHtml = hf.getComposeTweetHtml()
+    _getSearchUserHtml = hf.getSearchUserHtml()
+    _getHomeHtml = hf.getHomeHtml()
+    _getSearchTweetHtml = hf.getSearchTweetHtml()
+    _getListFollowersHtml = hf.getListFollowersHtml()
 
     html_content = htmlUser(visitingUser, visitingUserName, tweet_count,
                             following_count, followers_count, _tweetsHtml)
@@ -200,49 +228,48 @@ def user():
 
 @app.route('/search_users', methods=["POST"])
 def search_users():
-    loggedUser = request.args.get('loggedUser')
+
     keyword = request.form['keyword']
-    data = functions.searchUsers(keyword)
+    data = hf.searchUsers(keyword)
 
-    html_content = functions.htmlifyUsers(data)
+    html_content = hf.htmlifyUsers(data)
 
-    composeTweetHtml = functions.getComposeTweetHtml()
-    _getSearchUserHtml = functions.getSearchUserHtml()
-    _getHomeHtml = functions.getHomeHtml()
-    _getSearchTweetHtml = functions.getSearchTweetHtml()
-    _getListFollowersHtml = functions.getListFollowersHtml()
+    composeTweetHtml = hf.getComposeTweetHtml()
+    _getSearchUserHtml = hf.getSearchUserHtml()
+    _getHomeHtml = hf.getHomeHtml()
+    _getSearchTweetHtml = hf.getSearchTweetHtml()
+    _getListFollowersHtml = hf.getListFollowersHtml()
 
     return render_template('searchUsers.html', html_content=html_content, composeTweetHtml=composeTweetHtml, searchUser=_getSearchUserHtml, listFollowers=_getListFollowersHtml, searchTweet=_getSearchTweetHtml, homeHtml=_getHomeHtml)
 
 
 @app.route('/search_tweets', methods=["POST"])
 def search_tweets():
-    loggedUser = request.args.get('loggedUser')
+
     keyword = request.form['keyword']
 
-    data = functions.searchTweets(keyword)
+    data = hf.searchTweets(keyword)
 
-    html_content = functions.htmlifyTweets(data)
-    composeTweetHtml = functions.getComposeTweetHtml()
-    _getSearchUserHtml = functions.getSearchUserHtml()
-    _getHomeHtml = functions.getHomeHtml()
-    _getSearchTweetHtml = functions.getSearchTweetHtml()
-    _getListFollowersHtml = functions.getListFollowersHtml()
+    html_content = hf.htmlifyTweets(data)
+    composeTweetHtml = hf.getComposeTweetHtml()
+    _getSearchUserHtml = hf.getSearchUserHtml()
+    _getHomeHtml = hf.getHomeHtml()
+    _getSearchTweetHtml = hf.getSearchTweetHtml()
+    _getListFollowersHtml = hf.getListFollowersHtml()
 
     return render_template('searchTweets.html', html_content=html_content, composeTweetHtml=composeTweetHtml, searchUser=_getSearchUserHtml, listFollowers=_getListFollowersHtml, searchTweet=_getSearchTweetHtml, homeHtml=_getHomeHtml)
 
 
 @app.route('/followers')
 def listFollowers():
-    loggedUser = session.get('loggedUser')
 
-    data = functions.getFollowers()
-    html_content = functions.htmlifyUsers(data)
+    data = hf.getFollowers()
+    html_content = hf.htmlifyUsers(data)
 
-    composeTweetHtml = functions.getComposeTweetHtml()
-    _getSearchUserHtml = functions.getSearchUserHtml()
-    _getHomeHtml = functions.getHomeHtml()
-    _getSearchTweetHtml = functions.getSearchTweetHtml()
+    composeTweetHtml = hf.getComposeTweetHtml()
+    _getSearchUserHtml = hf.getSearchUserHtml()
+    _getHomeHtml = hf.getHomeHtml()
+    _getSearchTweetHtml = hf.getSearchTweetHtml()
 
     return render_template('followers.html', html_content=html_content, composeTweetHtml=composeTweetHtml, searchUser=_getSearchUserHtml, homeHtml=_getHomeHtml, searchTweet=_getSearchTweetHtml)
 
@@ -252,17 +279,18 @@ def home():
     loggedUser = session.get('loggedUser')
 
     if loggedUser is None:
+        # print("Error")
         return redirect(url_for('login'))
     else:
-        print("Logged In")
-        data = functions.retrieve_flwee_tweets()
+        # print("Logged In")
+        data = hf.retrieve_flwee_tweets()
 
-        html_content = functions.htmlifyTweets(data)
+        html_content = hf.htmlifyTweets(data)
 
-        composeTweetHtml = functions.getComposeTweetHtml()
-        _getSearchUserHtml = functions.getSearchUserHtml()
-        _getSearchTweetHtml = functions.getSearchTweetHtml()
-        _getListFollowersHtml = functions.getListFollowersHtml()
+        composeTweetHtml = hf.getComposeTweetHtml()
+        _getSearchUserHtml = hf.getSearchUserHtml()
+        _getSearchTweetHtml = hf.getSearchTweetHtml()
+        _getListFollowersHtml = hf.getListFollowersHtml()
 
         return render_template('home.html', html_content=html_content, composeTweetHtml=composeTweetHtml, searchUser=_getSearchUserHtml, listFollowers=_getListFollowersHtml, searchTweet=_getSearchTweetHtml)
 

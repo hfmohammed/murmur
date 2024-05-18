@@ -181,3 +181,10 @@ form input[type="text"] {
 .follow-button {
   flex: 20%;
 }
+
+.message {
+  background-color: #cce5ff; /* Blue background */
+  color: #000000; /* Black font color */
+  padding: 10px;
+  margin-bottom: 10px;
+}

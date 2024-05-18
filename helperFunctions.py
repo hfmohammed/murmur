@@ -20,7 +20,7 @@ def getHomeHtml():
 
 def getDate():
     date = datetime.now().strftime('%Y-%m-%d')
-    print(date)
+    # print(date)
 
     return date
 
@@ -95,22 +95,6 @@ def getFollowers():
     return followers
 
 
-def htmlifyUsers(data):
-    html_content = ""
-
-    for i in data:
-        visitingUser, visitingUserName, city = i
-        html_content += f"""
-                            <a href="/user?visitingUser={visitingUser}&visitingUserName={visitingUserName}" class="tweet-link">
-                                <div data-uid="{visitingUser}">
-                                    <p>{visitingUser}: {visitingUserName}</p>
-                                </div>
-                            </a>
-                            <br>
-                        """
-    return html_content
-
-
 def getRecentTweets(visitingUser):
     conn = sqlite3.connect(databaseName)
     cursor = conn.cursor()
@@ -164,17 +148,18 @@ def getRecentTweets(visitingUser):
 def follow(loggedUser, visitingUser):
     conn = sqlite3.connect(databaseName)
     cursor = conn.cursor()
+    result = 0
 
     tdate = getDate()
     try:
         cursor.execute("INSERT INTO follows VALUES (? , ?, ?)",
                        (loggedUser, visitingUser, tdate))
         conn.commit()
-        print("added")
+        result  = 1
     except sqlite3.IntegrityError:
-        print("alrIn")
         pass
     conn.close()
+    return result
 
 
 def getUserDetails(visitingUser):
@@ -220,6 +205,18 @@ def _htmlifyTweet(tid, writer, date, text):
                     </a>
                     <br>
                 """
+    return element
+
+
+def _htmlifyUser(visitingUser, visitingUserName):
+    element = f"""
+                <a href="/user?visitingUser={visitingUser}&visitingUserName={visitingUserName}" class="tweet-link">
+                    <div data-uid="{visitingUser}">
+                        <p>{visitingUser}: {visitingUserName}</p>
+                    </div>
+                </a>
+                <br>
+            """
     return element
 
 
@@ -308,7 +305,7 @@ def _htmlifyTweetDetails(tid, replyCount, retweetCount, tweetDetails):
 
     element = f"""
                 <div data-tid="{tid}">
-                    <p>Author: {writer} date: {date}, reply to: {replyto}</p>
+                    <p style="text-align: center; font-weight: bold;">{writer} replied to {replyto} on {date}</p>
                     <p>{text}</p>
                     <p>replies: {replyCount}  ||  retweets: {retweetCount}</p>
 
@@ -338,21 +335,46 @@ def getTweetStats(tid):
     return html_content
 
 
+def showNoData(e):
+    html_content = f"""
+                    <div class="tweet-link">
+                        <div data-tid="noData">
+                            <p style="text-align: center; font-weight: bold;">No {e} available</p>
+                            <br>
+                        </div>
+                    </div>
+                    """
+    return html_content
+
+
 def htmlifyTweets(data):
     html_content = ""
-
-    for i in data:
-        try:
-            tid, writer, date, text, replyto, _type, retweeter = i
-
-        except:
+    if len(data) == 0:
+        html_content += showNoData("tweets")
+    else:
+        for i in data:
             try:
-                tid, writer, date, text, replyto, _type = i
+                tid, writer, date, text, replyto, _type, retweeter = i
 
             except:
-                tid, writer, date, text, replyto = i
-        html_content += _htmlifyTweet(tid, writer, date, text)
+                try:
+                    tid, writer, date, text, replyto, _type = i
 
+                except:
+                    tid, writer, date, text, replyto = i
+            html_content += _htmlifyTweet(tid, writer, date, text)
+
+    return html_content
+
+
+def htmlifyUsers(data):
+    html_content = ""
+    if len(data) == 0:
+        html_content += showNoData("users")
+    else:
+        for i in data:
+            visitingUser, visitingUserName, city = i
+            html_content += _htmlifyUser(visitingUser, visitingUserName)
     return html_content
 
 
@@ -467,7 +489,6 @@ def searchUsers(keyword):
 
 
 def getComposeTweetHtml(replyto="None"):
-    loggedUser = session.get('loggedUser')
     buttonText = "Write a Tweet"
 
     if replyto != "None":
