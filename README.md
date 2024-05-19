@@ -18,7 +18,6 @@
 - Python 3.6 or higher
 - Flask
 - SQLite3
-- Installation
 
 ## Usage
 - Sign Up: Navigate to /signup to create a new account.
