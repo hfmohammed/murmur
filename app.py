@@ -5,7 +5,7 @@ import hashlib
 
 app = Flask(__name__)
 app.secret_key = "test"
-databaseName = "test.db"
+databaseName = "twitterClone.db"
 
 
 @app.route('/approve_login', methods=["POST"])
