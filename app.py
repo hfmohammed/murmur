@@ -127,7 +127,7 @@ def composeTweet():
 
     url = ""
     if replyto != "None":
-        url = f"tweets?tid=replyto"
+        url = f"tweets?tid={replyto}"
     else:
         url = f"home"
 
