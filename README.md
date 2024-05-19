@@ -20,10 +20,11 @@
 - SQLite3
 
 ## Usage
+- Database: App will be connected to "twitterClone.db"
 - Sign Up: Navigate to /signup to create a new account.
 - Login: Navigate to /login to log in with an existing account.
 - Logout: Click the "Log Out" button to log out of your account.
 - Post a Tweet: Use the "Write a Tweet" button any page to write and post a new tweet.
 - Reply to tweet: Use the "Reply" button under any tweet to write and post a reply.
-- Retweet: Click the retweet button on an existing tweet to share it with your followers.
-- Followers list: Navigate to /followers to see who follows you.
+- Retweet: Click the "retweet" button on an existing tweet to share it with your followers.
+- Followers list: Click the "My Followers" button to see who follows you.
