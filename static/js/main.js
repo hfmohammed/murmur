@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", function () {
     email: document.getElementById("email"),
   };
 
-  function updateSignUpErrors(key) {
+  function updateSignUpErrors(inputKey) {
     // console.log(key)
 
     const errors = [];
@@ -25,12 +25,17 @@ document.addEventListener("DOMContentLoaded", function () {
           errors.push(`${capitalizeFirstLetter(key)} cannot be empty.`);
         }
       } else if (
-        containsSymbol(value) &&
+        (containsSymbol(value) || value.length > 100) &&
         key !== "password" &&
         key !== "email" &&
         key !== "username"
       ) {
-        errors.push(`${capitalizeFirstLetter(key)} cannot contain symbols.`);
+        if (containsSymbol(value))
+          errors.push(
+            `${capitalizeFirstLetter(key)} cannot contain special characters.`
+          );
+        if (value.length > 100)
+          errors.push(`${capitalizeFirstLetter(key)} is too long`);
       } else {
         if (key !== "email" && key !== "username" && key !== "password") {
           successes.push(`${capitalizeFirstLetter(key)} is valid.`);
@@ -42,7 +47,7 @@ document.addEventListener("DOMContentLoaded", function () {
     checkPassword(inputs.password.value, errors, successes);
     checkEmail(inputs.email.value, errors, successes);
     checkUsername(inputs.username.value, errors, checking, successes);
-      // Clear previous messages
+    // Clear previous messages
     signUpErrors.innerHTML = "";
 
     // Display errors
@@ -79,19 +84,22 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (username === "") {
       errors.push("Username is invalid");
-    } else if (containsSymbol(username)) {
-      errors.push("Username cannot contain special characters");
+    } else if (containsSymbol(username) || username.length > 100) {
+      if (containsSymbol(username))
+        errors.push("Username cannot contain special characters");
+      if (username.length > 100) errors.push("Username is too long");
     } else {
-        checkUsernameAvailability(username, errors, checking)
+      checkUsernameAvailability(username, errors, checking)
         .then((result) => {
-            // Use the result here
-            if (result) {successes.push("Username is available")}
-            successes.forEach((success) => displayMessage(success, "green"));
-
+          // Use the result here
+          if (result) {
+            successes.push("Username is available");
+          }
+          successes.forEach((success) => displayMessage(success, "green"));
         })
         .catch((error) => {
-            // Handle any errors here
-            console.error("Error:", error);
+          // Handle any errors here
+          console.error("Error:", error);
         });
     }
   }
@@ -100,6 +108,10 @@ document.addEventListener("DOMContentLoaded", function () {
     passwordErrors = 0;
     if (password.length < 8) {
       errors.push("Password must be at least 8 characters long.");
+      passwordErrors += 1;
+    }
+    if (password.length > 100) {
+      errors.push("Password is too long.");
       passwordErrors += 1;
     }
     if (!/[A-Z]/.test(password)) {
@@ -166,6 +178,10 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
   function checkEmail(email, errors, successes) {
+    if (email.length > 100) {
+      errors.push("Email is too long.");
+      passwordErrors += 1;
+    }
     if (!validateEmail(email)) {
       errors.push("Invalid email address.");
     } else {
@@ -177,7 +193,7 @@ document.addEventListener("DOMContentLoaded", function () {
   Object.keys(inputs).forEach((key) => {
     inputs[key].addEventListener("input", () => updateSignUpErrors(key));
   });
-  
+
   // Call the updateSignUpErrors function initially
   updateSignUpErrors();
 });

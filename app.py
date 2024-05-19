@@ -1,9 +1,4 @@
-import sys
-import sqlite3
-import getpass
-import re
 from datetime import datetime
-import os
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 import helperFunctions as hf
 import hashlib
@@ -18,7 +13,7 @@ def approve_login():
     loggedUser = request.form['username']
     password = request.form['password']
     password = hashlib.sha256(password.encode()).hexdigest()
-    
+
     error_message = "Username or password does not match our records"
 
     if not hf.usernameExists(loggedUser):
@@ -65,14 +60,14 @@ def approve_signup():
     loggedUser = request.form['username']
     password = request.form['password']
     password = hashlib.sha256(password.encode()).hexdigest()
-
+    print(password)
+    print(len(password))
     loggedUserName = request.form['name']
     email = request.form['email']
     city = request.form['city']
-    timezone = 1
 
     if not hf.usernameExists(loggedUser):
-        if hf.createUser(loggedUser, password, loggedUserName, email, city, timezone):
+        if hf.createUser(loggedUser, password, loggedUserName, email, city):
             session['loggedUser'] = loggedUser
             flash("Welcome, your account has been successfully created!")
             return redirect(url_for('home'))
@@ -122,7 +117,6 @@ def retweet():
 
 @app.route('/composeTweet', methods=["POST"])
 def composeTweet():
-    loggedUser = session["loggedUser"]
     replyto = request.form["replyto"]
     # print(loggedUser)
 
@@ -131,14 +125,28 @@ def composeTweet():
     _getListFollowersHtml = hf.getListFollowersHtml()
     _getHomeHtml = hf.getHomeHtml()
 
+    url = ""
+    if replyto != "None":
+        url = f"tweets?tid=replyto"
+    else:
+        url = f"home"
+
     formElement = f"""
+                    <a href="{url}"><i class="fa fa-arrow-left"></i> Back</a>
+                    <br>
+                    <br>
                     <form action="/_composeTweet" method="post" class="tweet-form">
                         <input type="hidden" name="replyto" value="{ replyto }">
     
-                        <label for="tweet"></label><br>
+                        <label for="tweet"></label>
+
                         <textarea type="text" class="large-input" placeholder="Share your thoughts with the world..." id="tweet" name="tweet"></textarea>
-                        <br>
-                        <input type="submit" value="Tweet">
+                        
+
+                        <p id="char-count">0/500</p>
+                        <p id="error-message" style="color:red; display:none;">Your tweet exceeds 500 characters!</p>
+
+                        <input type="submit" value="Tweet" id="tweet-button">
                     </form>
                     """
 

@@ -1,19 +1,16 @@
-import sys
 import sqlite3
-import getpass
 import re
 from datetime import datetime
-import os
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 
 databaseName = "test.db"
 
 
 def getHomeHtml():
     html_content = f"""
-                        <form action="/home" class="header-form">
-                            <button type="submit">Home</button>
-                        </form>
+                    <form action="/home" class="header-form">
+                        <button type="submit" class="home-button"><i class="fa fa-home"></i></button>
+                    </form>
                     """
     return html_content
 
@@ -430,11 +427,11 @@ def retrieve_flwee_tweets():
     return data
 
 
-def createUser(loggedUser, password, name, email, city, timezone):
+def createUser(loggedUser, password, name, email, city):
     conn = sqlite3.connect(databaseName)
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?)",
-                   (loggedUser, password, name, email, city, timezone))
+    cursor.execute("INSERT INTO users VALUES (?, ?, ?, ?, ?)",
+                   (loggedUser, password, name, email, city))
     conn.commit()
     conn.close()
     return "Success"

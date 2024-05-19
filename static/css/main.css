@@ -188,3 +188,10 @@ form input[type="text"] {
   padding: 10px;
   margin-bottom: 10px;
 }
+
+.home-button {
+  font-size: 24px; /* Adjust the font size as needed */
+  font-weight: bold; /* Make the symbol bold */
+  line-height: 1; /* Ensure the symbol is vertically centered */
+  padding: 5px 10px; /* Adjust padding as needed for spacing */
+}
