@@ -1,4 +1,4 @@
-# Twitter Clone - Flask Web Application
+# Murmur (Twitter Clone) - Flask Web Application
 
 ## Overview
 ### This project is a web application built with Flask, a lightweight WSGI web application framework in Python. The application provides user authentication, the ability to post and retweet messages, and displays notifications to users upon certain actions such as posting a tweet, retweeting, etc.
